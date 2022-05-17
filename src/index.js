@@ -5,6 +5,11 @@ import simpleLightbox from 'simplelightbox/dist/simple-lightbox.min.css';
 import './sass/main.scss';
 const lightbox = new SimpleLightbox('.gallery a');
 
+Notify.init({
+  timeout: 2000,
+  clickToClose: true,
+});
+
 const refs = {
   form: document.querySelector('.search-form'),
   gallery: document.querySelector('.gallery'),
