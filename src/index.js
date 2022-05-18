@@ -19,7 +19,7 @@ const refs = {
 
 const request = {
   page: 1,
-  perPage: 20,
+  perPage: 32,
   message: '',
 };
 
@@ -35,21 +35,20 @@ async function atSearch(event) {
   }
   // refs.button.classList.add('visually-hidden');
   refs.gallery.innerHTML = '';
+  try {
+    const { hits, totalHits } = await getResponse(1);
 
-  /* Деструктуризирую не сразу, тк нужно сначала поменять данные именно в обьекте запроса */
-  request.page = 1;
-  request.message = event.currentTarget.elements.searchQuery.value;
-  const { page, message } = request;
+    if (hits.length === 0) {
+      Notify.failure('Sorry, there are no images matching your search query. Please try again.');
+      return;
+    }
+    Notify.success(`Hooray! We found ${totalHits} images.`);
 
-  const { hits, totalHits } = await fetchRequest(message, page);
-
-  if (hits.length === 0) {
-    Notify.failure('Sorry, there are no images matching your search query. Please try again.');
-    return;
+    renderMarkup(hits);
+  } catch {
+    Notify.failure('Ooops... something went wrong');
   }
-  Notify.success(`Hooray! We found ${totalHits} images.`);
 
-  renderMarkup(hits);
   // refs.button.classList.remove('visually-hidden');
 }
 
@@ -58,38 +57,43 @@ async function atScroll() {
   const bodyEl = document.body;
 
   if (bodyEl.clientHeight + bodyEl.getBoundingClientRect().top === htmlEl.clientHeight) {
-    request.page += 1;
-    request.message = refs.form.elements.searchQuery.value;
-    const { page, perPage, message } = request;
+    try {
+      const { hits, totalHits, page, perPage } = await getResponse(request.page + 1);
+      renderMarkup(hits);
 
-    const { hits, totalHits } = await fetchRequest(message, page, perPage);
-
-    renderMarkup(hits);
-
-    if (
-      page * perPage >= totalHits &&
-      bodyEl.clientHeight + bodyEl.getBoundingClientRect().top === htmlEl.clientHeight
-    ) {
-      Notify.info("We're sorry, but you've reached the end of search results.");
-      window.removeEventListener('scroll', atScroll);
-      // refs.button.classList.add('visually-hidden');
+      if (
+        page * perPage >= totalHits &&
+        bodyEl.clientHeight + bodyEl.getBoundingClientRect().top === htmlEl.clientHeight
+      ) {
+        Notify.info("We're sorry, but you've reached the end of search results.");
+        window.removeEventListener('scroll', atScroll);
+        // refs.button.classList.add('visually-hidden');
+      }
+    } catch {
+      if (bodyEl.clientHeight + bodyEl.getBoundingClientRect().top === htmlEl.clientHeight) {
+        Notify.info("We're sorry, but you've reached the end of search results.");
+        window.removeEventListener('scroll', atScroll);
+        // refs.button.classList.add('visually-hidden');
+      }
     }
   }
 }
 
-// async function onLoadMoreButtonClick() {
-//   request.page += 1;
-//   request.message = refs.form.elements.searchQuery.value;
+async function getResponse(setPage) {
+  request.page = setPage;
+  request.message = refs.form.elements.searchQuery.value;
+  const { page, message, perPage } = request;
+  const responce = await fetchRequest(message, page, perPage);
+  const { hits, totalHits } = responce;
 
-//   const { hits, totalHits } = await fetchRequest(request.message, request.page);
-//   if (request.page * request.perPage >= totalHits) {
-//     Notify.info("We're sorry, but you've reached the end of search results.");
-//     refs.button.classList.add('visually-hidden');
-//   }
-
-//   renderMarkup(hits);
-//   makeAutoScroll();
-// }
+  return {
+    hits,
+    totalHits,
+    page,
+    perPage,
+    message,
+  };
+}
 
 function renderMarkup(arr) {
   refs.gallery.insertAdjacentHTML('beforeend', createMarkup(arr));
@@ -125,6 +129,20 @@ function createMarkup(arr) {
     })
     .join('');
 }
+
+// async function onLoadMoreButtonClick() {
+//   request.page += 1;
+//   request.message = refs.form.elements.searchQuery.value;
+
+//   const { hits, totalHits } = await fetchRequest(request.message, request.page);
+//   if (request.page * request.perPage >= totalHits) {
+//     Notify.info("We're sorry, but you've reached the end of search results.");
+//     refs.button.classList.add('visually-hidden');
+//   }
+
+//   renderMarkup(hits);
+//   makeAutoScroll();
+// }
 
 // function makeAutoScroll() {
 //   const { height: cardHeight } = document
